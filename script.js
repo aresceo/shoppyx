@@ -327,7 +327,7 @@ function loadProfileData() {
         const user = tg.initDataUnsafe?.user;
         const userId = user?.id || 'guest';
         
-        // Load saved data
+        // Load saved data from localStorage first for immediate display
         const bio = localStorage.getItem(`profile_bio_${userId}`) || '';
         const btcWallet = localStorage.getItem(`profile_btc_${userId}`) || '';
         const ltcWallet = localStorage.getItem(`profile_ltc_${userId}`) || '';
@@ -344,6 +344,9 @@ function loadProfileData() {
             if (btcField) btcField.value = btcWallet;
             if (ltcField) ltcField.value = ltcWallet;
             if (feedbackField) feedbackField.value = feedbackChannel;
+            
+            // Now sync from server to get the latest data
+            loadProfileDataFromServer();
         }, 100);
         
     } catch (error) {
@@ -397,6 +400,91 @@ function saveProfileDataToServer(profileData) {
         }
     } catch (error) {
         console.error('Error sending profile data to server:', error);
+    }
+}
+
+async function loadProfileDataFromServer() {
+    try {
+        console.log('Attempting to load profile data from server database...');
+        const user = tg.initDataUnsafe?.user;
+        const userId = user?.id;
+        
+        if (!userId) {
+            console.log('No user ID available, skipping server sync');
+            return;
+        }
+        
+        // Try to fetch database.json from the server
+        try {
+            const response = await fetch('./database.json');
+            if (response.ok) {
+                const database = await response.json();
+                const userData = database.users[userId.toString()];
+                
+                if (userData) {
+                    console.log('Found user data on server:', Object.keys(userData));
+                    
+                    // Update localStorage with server data
+                    if (userData.bio !== undefined) {
+                        localStorage.setItem(`profile_bio_${userId}`, userData.bio);
+                    }
+                    if (userData.btc_wallet !== undefined) {
+                        localStorage.setItem(`profile_btc_${userId}`, userData.btc_wallet);
+                    }
+                    if (userData.ltc_wallet !== undefined) {
+                        localStorage.setItem(`profile_ltc_${userId}`, userData.ltc_wallet);
+                    }
+                    if (userData.feedback_channel !== undefined) {
+                        localStorage.setItem(`profile_feedback_${userId}`, userData.feedback_channel);
+                    }
+                    if (userData.profile_image !== undefined) {
+                        localStorage.setItem(`profile_image_${userId}`, userData.profile_image);
+                    }
+                    
+                    // Update the form fields with server data
+                    updateFormFieldsFromLocalStorage(userId);
+                    console.log('Profile synchronized from server database');
+                } else {
+                    console.log('No profile data found on server for user:', userId);
+                }
+            } else {
+                console.log('Could not fetch database from server');
+            }
+        } catch (fetchError) {
+            console.log('Database sync not available (normal in production):', fetchError.message);
+        }
+    } catch (error) {
+        console.error('Error loading profile data from server:', error);
+    }
+}
+
+function updateFormFieldsFromLocalStorage(userId) {
+    // Update form fields with synchronized data
+    const bio = localStorage.getItem(`profile_bio_${userId}`) || '';
+    const btcWallet = localStorage.getItem(`profile_btc_${userId}`) || '';
+    const ltcWallet = localStorage.getItem(`profile_ltc_${userId}`) || '';
+    const feedbackChannel = localStorage.getItem(`profile_feedback_${userId}`) || '';
+    
+    const bioField = document.getElementById('profileBio');
+    const btcField = document.getElementById('btcWallet');
+    const ltcField = document.getElementById('ltcWallet');
+    const feedbackField = document.getElementById('feedbackChannel');
+    
+    if (bioField && bioField.value !== bio) bioField.value = bio;
+    if (btcField && btcField.value !== btcWallet) btcField.value = btcWallet;
+    if (ltcField && ltcField.value !== ltcWallet) ltcField.value = ltcWallet;
+    if (feedbackField && feedbackField.value !== feedbackChannel) feedbackField.value = feedbackChannel;
+    
+    // Also update avatar if changed
+    const profileImage = localStorage.getItem(`profile_image_${userId}`);
+    if (profileImage) {
+        const avatarImg = document.querySelector('.avatar-container img');
+        if (avatarImg && avatarImg.src !== profileImage) {
+            avatarImg.src = profileImage;
+            avatarImg.style.display = 'block';
+            const placeholderSpan = document.querySelector('.avatar-container .avatar-placeholder');
+            if (placeholderSpan) placeholderSpan.style.display = 'none';
+        }
     }
 }
 
@@ -649,5 +737,7 @@ window.ShoppyXApp = {
     syncProfileFromServer,
     saveProfileData,
     loadProfileData,
-    saveProfileDataToServer
+    saveProfileDataToServer,
+    loadProfileDataFromServer,
+    updateFormFieldsFromLocalStorage
 };
