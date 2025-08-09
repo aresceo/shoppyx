@@ -338,7 +338,7 @@ function saveProfileDataToServer(profileData) {
 
 async function loadProfileDataFromServer() {
     try {
-        console.log('Attempting to load profile data from server database...');
+        console.log('Requesting profile data from server via Telegram...');
         const user = tg.initDataUnsafe?.user;
         const userId = user?.id;
         
@@ -347,90 +347,82 @@ async function loadProfileDataFromServer() {
             return;
         }
         
-        // Try to fetch database.json directly with multiple attempts
-        const maxAttempts = 3;
-        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            try {
-                console.log(`Fetching database attempt ${attempt}/${maxAttempts}`);
-                const timestamp = Date.now();
-                const response = await fetch(`./database.json?t=${timestamp}&v=${attempt}`, {
-                    method: 'GET',
-                    headers: {
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'Pragma': 'no-cache',
-                        'Expires': '0'
-                    }
-                });
+        // Request profile data from server via Telegram bot
+        if (tg.sendData) {
+            const requestData = {
+                action: 'get_profile_data',
+                user_id: userId
+            };
+            console.log('Requesting profile data from bot:', requestData);
+            tg.sendData(JSON.stringify(requestData));
+        }
+        
+        // Also try to fetch from the synced database file as fallback
+        try {
+            const timestamp = Date.now();
+            const response = await fetch(`../database.json?t=${timestamp}`, {
+                method: 'GET',
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                }
+            });
+            
+            if (response.ok) {
+                const database = await response.json();
+                const userData = database.users[userId.toString()];
                 
-                if (response.ok) {
-                    const database = await response.json();
-                    const userData = database.users[userId.toString()];
+                if (userData) {
+                    console.log('Found user data in main database:', Object.keys(userData));
                     
-                    if (userData) {
-                        console.log('Found user data on server:', Object.keys(userData));
+                    // Get server data
+                    const serverData = {
+                        bio: userData.bio || '',
+                        btc_wallet: userData.btc_wallet || '',
+                        ltc_wallet: userData.ltc_wallet || '',
+                        feedback_channel: userData.feedback_channel || ''
+                    };
+                    
+                    // Check if server data is different from localStorage
+                    const currentBio = localStorage.getItem(`profile_bio_${userId}`) || '';
+                    const currentBtc = localStorage.getItem(`profile_btc_${userId}`) || '';
+                    const currentLtc = localStorage.getItem(`profile_ltc_${userId}`) || '';
+                    const currentFeedback = localStorage.getItem(`profile_feedback_${userId}`) || '';
+                    
+                    const hasChanges = (
+                        currentBio !== serverData.bio ||
+                        currentBtc !== serverData.btc_wallet ||
+                        currentLtc !== serverData.ltc_wallet ||
+                        currentFeedback !== serverData.feedback_channel
+                    );
+                    
+                    if (hasChanges) {
+                        console.log('Server data differs from local, updating...');
                         
-                        // Get server data
-                        const serverData = {
-                            bio: userData.bio || '',
-                            btc_wallet: userData.btc_wallet || '',
-                            ltc_wallet: userData.ltc_wallet || '',
-                            feedback_channel: userData.feedback_channel || ''
-                        };
+                        // Update localStorage with server data
+                        localStorage.setItem(`profile_bio_${userId}`, serverData.bio);
+                        localStorage.setItem(`profile_btc_${userId}`, serverData.btc_wallet);
+                        localStorage.setItem(`profile_ltc_${userId}`, serverData.ltc_wallet);
+                        localStorage.setItem(`profile_feedback_${userId}`, serverData.feedback_channel);
                         
-                        // Check if server data is different from localStorage
-                        const currentBio = localStorage.getItem(`profile_bio_${userId}`) || '';
-                        const currentBtc = localStorage.getItem(`profile_btc_${userId}`) || '';
-                        const currentLtc = localStorage.getItem(`profile_ltc_${userId}`) || '';
-                        const currentFeedback = localStorage.getItem(`profile_feedback_${userId}`) || '';
+                        // Update the form fields with server data
+                        updateFormFieldsFromLocalStorage(userId);
+                        console.log('Profile synchronized from main database');
                         
-                        const hasChanges = (
-                            currentBio !== serverData.bio ||
-                            currentBtc !== serverData.btc_wallet ||
-                            currentLtc !== serverData.ltc_wallet ||
-                            currentFeedback !== serverData.feedback_channel
-                        );
-                        
-                        if (hasChanges) {
-                            console.log('Server data differs from local, updating...');
-                            
-                            // Update localStorage with server data
-                            localStorage.setItem(`profile_bio_${userId}`, serverData.bio);
-                            localStorage.setItem(`profile_btc_${userId}`, serverData.btc_wallet);
-                            localStorage.setItem(`profile_ltc_${userId}`, serverData.ltc_wallet);
-                            localStorage.setItem(`profile_feedback_${userId}`, serverData.feedback_channel);
-                            
-                            // Update the form fields with server data
-                            updateFormFieldsFromLocalStorage(userId);
-                            console.log('Profile synchronized from server database');
-                            
-                            // Show notification that data was synced
-                            showSuccessMessage('Dati sincronizzati dal server!');
-                        } else {
-                            console.log('Server data matches local data, no update needed');
-                        }
-                        
-                        return; // Success, exit the retry loop
+                        // Show notification that data was synced
+                        showSuccessMessage('Dati sincronizzati dal database!');
                     } else {
-                        console.log('No profile data found on server for user:', userId);
-                        return;
+                        console.log('Server data matches local data, no update needed');
                     }
                 } else {
-                    console.log(`Database fetch attempt ${attempt} failed with status:`, response.status);
-                    if (attempt === maxAttempts) {
-                        console.log('All database fetch attempts failed');
-                    }
+                    console.log('No profile data found in main database for user:', userId);
                 }
-            } catch (fetchError) {
-                console.log(`Database fetch attempt ${attempt} error:`, fetchError.message);
-                if (attempt === maxAttempts) {
-                    console.log('All database fetch attempts failed due to errors');
-                }
+            } else {
+                console.log('Could not fetch main database file:', response.status);
             }
-            
-            // Wait before retrying (except on last attempt)
-            if (attempt < maxAttempts) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            }
+        } catch (fetchError) {
+            console.log('Could not access main database file:', fetchError.message);
         }
         
     } catch (error) {
