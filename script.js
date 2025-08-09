@@ -360,7 +360,7 @@ async function loadProfileDataFromServer() {
         // Also try to fetch from the synced database file as fallback
         try {
             const timestamp = Date.now();
-            const response = await fetch(`../database.json?t=${timestamp}`, {
+            const response = await fetch(`./database.json?t=${timestamp}`, {
                 method: 'GET',
                 headers: {
                     'Cache-Control': 'no-cache, no-store, must-revalidate',
