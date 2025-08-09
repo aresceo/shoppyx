@@ -160,15 +160,194 @@ body {
     width: 80px;
     height: 80px;
     border-radius: 50%;
-    background-color: var(--tg-theme-button-color, #007acc);
+    background-color: #ff4757;
     display: flex;
     align-items: center;
     justify-content: center;
     margin: 0 auto 16px;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.profile-avatar:hover {
+    transform: scale(1.05);
 }
 
 .profile-avatar svg {
+    stroke: #ffffff;
+}
+
+.profile-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.avatar-edit-button {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: var(--tg-theme-button-color, #007acc);
+    border: 3px solid var(--tg-theme-bg-color, #ffffff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.avatar-edit-button:hover {
+    transform: scale(1.1);
+    background-color: var(--tg-theme-button-color, #0066cc);
+}
+
+.avatar-edit-button svg {
     stroke: var(--tg-theme-button-text-color, #ffffff);
+    width: 14px;
+    height: 14px;
+}
+
+/* Hidden file input */
+.avatar-file-input {
+    display: none;
+}
+
+/* Avatar selection modal */
+.avatar-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.avatar-modal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.avatar-modal-content {
+    background-color: var(--tg-theme-bg-color, #ffffff);
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 320px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    transform: scale(0.7);
+    transition: transform 0.3s ease;
+}
+
+.avatar-modal.show .avatar-modal-content {
+    transform: scale(1);
+}
+
+.avatar-modal-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.avatar-modal-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--tg-theme-text-color, #000000);
+    margin-bottom: 8px;
+}
+
+.avatar-modal-subtitle {
+    font-size: 14px;
+    color: var(--tg-theme-hint-color, #666666);
+}
+
+.avatar-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.avatar-option {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    border: 3px solid transparent;
+    justify-self: center;
+}
+
+.avatar-option:hover {
+    transform: scale(1.1);
+    border-color: var(--tg-theme-button-color, #007acc);
+}
+
+.avatar-option.selected {
+    border-color: var(--tg-theme-button-color, #007acc);
+    transform: scale(1.05);
+}
+
+.avatar-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.modal-button {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.modal-button.primary {
+    background-color: var(--tg-theme-button-color, #007acc);
+    color: var(--tg-theme-button-text-color, #ffffff);
+}
+
+.modal-button.primary:hover {
+    background-color: var(--tg-theme-button-color, #0066cc);
+    transform: translateY(-1px);
+}
+
+.modal-button.secondary {
+    background-color: transparent;
+    color: var(--tg-theme-text-color, #000000);
+    border: 1px solid var(--tg-theme-hint-color, #e0e0e0);
+}
+
+.modal-button.secondary:hover {
+    background-color: var(--tg-theme-secondary-bg-color, #f8f9fa);
+}
+
+.modal-button.danger {
+    background-color: #ff4757;
+    color: #ffffff;
+}
+
+.modal-button.danger:hover {
+    background-color: #ff3742;
 }
 
 .profile-name {
