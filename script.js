@@ -70,12 +70,14 @@ function showPage(pageName) {
             break;
         case 'profilo':
             content.innerHTML = getProfilePage();
-            // Load saved profile data after rendering and force sync from server
-            loadProfileData();
-            // Always try to sync from server when opening profile
+            // Load saved profile data after rendering
             setTimeout(() => {
-                loadProfileDataFromServer();
-            }, 500);
+                loadProfileData();
+                // Force sync from server after local data is loaded
+                setTimeout(() => {
+                    loadProfileDataFromServer();
+                }, 1000);
+            }, 100);
             break;
         case 'venditore':
             content.innerHTML = getVenditorePage();
@@ -345,51 +347,92 @@ async function loadProfileDataFromServer() {
             return;
         }
         
-        // Request profile data from the server via Telegram bot
-        if (tg.sendData) {
-            const requestData = {
-                action: 'get_profile_data'
-            };
-            console.log('Requesting profile data from server via Telegram bot');
-            tg.sendData(JSON.stringify(requestData));
+        // Try to fetch database.json directly with multiple attempts
+        const maxAttempts = 3;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                console.log(`Fetching database attempt ${attempt}/${maxAttempts}`);
+                const timestamp = Date.now();
+                const response = await fetch(`./database.json?t=${timestamp}&v=${attempt}`, {
+                    method: 'GET',
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
+                    }
+                });
+                
+                if (response.ok) {
+                    const database = await response.json();
+                    const userData = database.users[userId.toString()];
+                    
+                    if (userData) {
+                        console.log('Found user data on server:', Object.keys(userData));
+                        
+                        // Get server data
+                        const serverData = {
+                            bio: userData.bio || '',
+                            btc_wallet: userData.btc_wallet || '',
+                            ltc_wallet: userData.ltc_wallet || '',
+                            feedback_channel: userData.feedback_channel || ''
+                        };
+                        
+                        // Check if server data is different from localStorage
+                        const currentBio = localStorage.getItem(`profile_bio_${userId}`) || '';
+                        const currentBtc = localStorage.getItem(`profile_btc_${userId}`) || '';
+                        const currentLtc = localStorage.getItem(`profile_ltc_${userId}`) || '';
+                        const currentFeedback = localStorage.getItem(`profile_feedback_${userId}`) || '';
+                        
+                        const hasChanges = (
+                            currentBio !== serverData.bio ||
+                            currentBtc !== serverData.btc_wallet ||
+                            currentLtc !== serverData.ltc_wallet ||
+                            currentFeedback !== serverData.feedback_channel
+                        );
+                        
+                        if (hasChanges) {
+                            console.log('Server data differs from local, updating...');
+                            
+                            // Update localStorage with server data
+                            localStorage.setItem(`profile_bio_${userId}`, serverData.bio);
+                            localStorage.setItem(`profile_btc_${userId}`, serverData.btc_wallet);
+                            localStorage.setItem(`profile_ltc_${userId}`, serverData.ltc_wallet);
+                            localStorage.setItem(`profile_feedback_${userId}`, serverData.feedback_channel);
+                            
+                            // Update the form fields with server data
+                            updateFormFieldsFromLocalStorage(userId);
+                            console.log('Profile synchronized from server database');
+                            
+                            // Show notification that data was synced
+                            showSuccessMessage('Dati sincronizzati dal server!');
+                        } else {
+                            console.log('Server data matches local data, no update needed');
+                        }
+                        
+                        return; // Success, exit the retry loop
+                    } else {
+                        console.log('No profile data found on server for user:', userId);
+                        return;
+                    }
+                } else {
+                    console.log(`Database fetch attempt ${attempt} failed with status:`, response.status);
+                    if (attempt === maxAttempts) {
+                        console.log('All database fetch attempts failed');
+                    }
+                }
+            } catch (fetchError) {
+                console.log(`Database fetch attempt ${attempt} error:`, fetchError.message);
+                if (attempt === maxAttempts) {
+                    console.log('All database fetch attempts failed due to errors');
+                }
+            }
+            
+            // Wait before retrying (except on last attempt)
+            if (attempt < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
         }
         
-        // Also try to fetch database.json directly (for development)
-        try {
-            const response = await fetch('./database.json?' + Date.now()); // Add cache buster
-            if (response.ok) {
-                const database = await response.json();
-                const userData = database.users[userId.toString()];
-                
-                if (userData) {
-                    console.log('Found user data on server:', Object.keys(userData));
-                    
-                    // Update localStorage with server data only if server data is more recent or different
-                    const serverData = {
-                        bio: userData.bio || '',
-                        btc_wallet: userData.btc_wallet || '',
-                        ltc_wallet: userData.ltc_wallet || '',
-                        feedback_channel: userData.feedback_channel || ''
-                    };
-                    
-                    // Update localStorage
-                    localStorage.setItem(`profile_bio_${userId}`, serverData.bio);
-                    localStorage.setItem(`profile_btc_${userId}`, serverData.btc_wallet);
-                    localStorage.setItem(`profile_ltc_${userId}`, serverData.ltc_wallet);
-                    localStorage.setItem(`profile_feedback_${userId}`, serverData.feedback_channel);
-                    
-                    // Update the form fields with server data
-                    updateFormFieldsFromLocalStorage(userId);
-                    console.log('Profile synchronized from server database');
-                } else {
-                    console.log('No profile data found on server for user:', userId);
-                }
-            } else {
-                console.log('Could not fetch database from server (status:', response.status, ')');
-            }
-        } catch (fetchError) {
-            console.log('Database fetch failed:', fetchError.message);
-        }
     } catch (error) {
         console.error('Error loading profile data from server:', error);
     }
