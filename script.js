@@ -70,8 +70,12 @@ function showPage(pageName) {
             break;
         case 'profilo':
             content.innerHTML = getProfilePage();
-            // Load saved profile data after rendering
+            // Load saved profile data after rendering and force sync from server
             loadProfileData();
+            // Always try to sync from server when opening profile
+            setTimeout(() => {
+                loadProfileDataFromServer();
+            }, 500);
             break;
         case 'venditore':
             content.innerHTML = getVenditorePage();
@@ -123,10 +127,16 @@ function getProfilePage() {
     const userInfo = user?.username ? `@${user.username}` : 'Utente ShoppyX';
     const userId = user?.id || 'guest';
     
-    // Always use default Telegram avatar (non-changeable)
-    const avatarContent = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M20 21V19C20 17.9 19.1 16 17 16H7C4.9 16 4 17.9 4 19V21M16 7C16 9.2 14.2 11 12 11S8 9.2 8 7 9.8 3 12 3 16 4.8 16 7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>`;
+    // Try to get Telegram profile photo using the user object
+    let avatarContent;
+    if (user?.photo_url) {
+        // Use actual Telegram profile photo if available
+        avatarContent = `<img src="${user.photo_url}" alt="Profile Photo" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />`;
+    } else {
+        // Fallback to user initials or default icon
+        const initials = userName.substring(0, 2).toUpperCase();
+        avatarContent = `<div style="width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 24px;">${initials}</div>`;
+    }
     
     return `
         <div class="profile-page">
@@ -335,9 +345,18 @@ async function loadProfileDataFromServer() {
             return;
         }
         
-        // Try to fetch database.json from the server
+        // Request profile data from the server via Telegram bot
+        if (tg.sendData) {
+            const requestData = {
+                action: 'get_profile_data'
+            };
+            console.log('Requesting profile data from server via Telegram bot');
+            tg.sendData(JSON.stringify(requestData));
+        }
+        
+        // Also try to fetch database.json directly (for development)
         try {
-            const response = await fetch('./database.json');
+            const response = await fetch('./database.json?' + Date.now()); // Add cache buster
             if (response.ok) {
                 const database = await response.json();
                 const userData = database.users[userId.toString()];
@@ -345,22 +364,19 @@ async function loadProfileDataFromServer() {
                 if (userData) {
                     console.log('Found user data on server:', Object.keys(userData));
                     
-                    // Update localStorage with server data
-                    if (userData.bio !== undefined) {
-                        localStorage.setItem(`profile_bio_${userId}`, userData.bio);
-                    }
-                    if (userData.btc_wallet !== undefined) {
-                        localStorage.setItem(`profile_btc_${userId}`, userData.btc_wallet);
-                    }
-                    if (userData.ltc_wallet !== undefined) {
-                        localStorage.setItem(`profile_ltc_${userId}`, userData.ltc_wallet);
-                    }
-                    if (userData.feedback_channel !== undefined) {
-                        localStorage.setItem(`profile_feedback_${userId}`, userData.feedback_channel);
-                    }
-                    if (userData.profile_image !== undefined) {
-                        localStorage.setItem(`profile_image_${userId}`, userData.profile_image);
-                    }
+                    // Update localStorage with server data only if server data is more recent or different
+                    const serverData = {
+                        bio: userData.bio || '',
+                        btc_wallet: userData.btc_wallet || '',
+                        ltc_wallet: userData.ltc_wallet || '',
+                        feedback_channel: userData.feedback_channel || ''
+                    };
+                    
+                    // Update localStorage
+                    localStorage.setItem(`profile_bio_${userId}`, serverData.bio);
+                    localStorage.setItem(`profile_btc_${userId}`, serverData.btc_wallet);
+                    localStorage.setItem(`profile_ltc_${userId}`, serverData.ltc_wallet);
+                    localStorage.setItem(`profile_feedback_${userId}`, serverData.feedback_channel);
                     
                     // Update the form fields with server data
                     updateFormFieldsFromLocalStorage(userId);
@@ -369,10 +385,10 @@ async function loadProfileDataFromServer() {
                     console.log('No profile data found on server for user:', userId);
                 }
             } else {
-                console.log('Could not fetch database from server');
+                console.log('Could not fetch database from server (status:', response.status, ')');
             }
         } catch (fetchError) {
-            console.log('Database sync not available (normal in production):', fetchError.message);
+            console.log('Database fetch failed:', fetchError.message);
         }
     } catch (error) {
         console.error('Error loading profile data from server:', error);
