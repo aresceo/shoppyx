@@ -5,7 +5,6 @@ let tg = window.Telegram.WebApp;
 document.addEventListener('DOMContentLoaded', function() {
     initApp();
     setupNavigation();
-    loadProfileImageFromServer();
     
     // Set default page
     showPage('market');
@@ -124,26 +123,13 @@ function getProfilePage() {
     const userInfo = user?.username ? `@${user.username}` : 'Utente ShoppyX';
     const userId = user?.id || 'guest';
     
-    // Check if user has a saved profile image
-    const savedImage = localStorage.getItem(`profile_image_${userId}`);
-    
+    // Try to get Telegram profile photo
     let avatarContent;
-    if (savedImage) {
-        try {
-            const avatarData = JSON.parse(savedImage);
-            if (avatarData.type === 'emoji') {
-                // Emoji avatar
-                avatarContent = `<div style="background-color: ${avatarData.color}; width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px;">${avatarData.emoji}</div>`;
-            } else {
-                // Custom image
-                avatarContent = `<img src="${savedImage}" alt="Profile" />`;
-            }
-        } catch (e) {
-            // Fallback for old format or custom image
-            avatarContent = `<img src="${savedImage}" alt="Profile" />`;
-        }
+    if (user && user.photo_url) {
+        // Use Telegram profile photo if available
+        avatarContent = `<img src="${user.photo_url}" alt="Profile" />`;
     } else {
-        // Default avatar
+        // Default avatar icon
         avatarContent = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M20 21V19C20 17.9 19.1 16 17 16H7C4.9 16 4 17.9 4 19V21M16 7C16 9.2 14.2 11 12 11S8 9.2 8 7 9.8 3 12 3 16 4.8 16 7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>`;
@@ -152,14 +138,8 @@ function getProfilePage() {
     return `
         <div class="profile-page">
             <div class="profile-header">
-                <div class="profile-avatar" onclick="openAvatarSelector()">
+                <div class="profile-avatar">
                     ${avatarContent}
-                    <div class="avatar-edit-button">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                    </div>
                 </div>
                 <h2 class="profile-name">${userName}</h2>
                 <p class="profile-info">${userInfo}</p>
@@ -207,59 +187,7 @@ function getProfilePage() {
                 </button>
             </div>
             
-            <!-- Avatar Selection Modal -->
-            <div id="avatarModal" class="avatar-modal">
-                <div class="avatar-modal-content">
-                    <div class="avatar-modal-header">
-                        <h3 class="avatar-modal-title">Scegli Avatar</h3>
-                        <p class="avatar-modal-subtitle">Seleziona un'immagine per il tuo profilo</p>
-                    </div>
-                    
-                    <div class="avatar-options">
-                        <div class="avatar-option" style="background-color: #ff4757;" onclick="selectAvatar('#ff4757', '👤')">
-                            👤
-                        </div>
-                        <div class="avatar-option" style="background-color: #5352ed;" onclick="selectAvatar('#5352ed', '🛍️')">
-                            🛍️
-                        </div>
-                        <div class="avatar-option" style="background-color: #ff6b35;" onclick="selectAvatar('#ff6b35', '🎯')">
-                            🎯
-                        </div>
-                        <div class="avatar-option" style="background-color: #26de81;" onclick="selectAvatar('#26de81', '⭐')">
-                            ⭐
-                        </div>
-                        <div class="avatar-option" style="background-color: #fed330;" onclick="selectAvatar('#fed330', '🎨')">
-                            🎨
-                        </div>
-                        <div class="avatar-option" style="background-color: #fd79a8;" onclick="selectAvatar('#fd79a8', '💎')">
-                            💎
-                        </div>
-                        <div class="avatar-option" style="background-color: #00b894;" onclick="selectAvatar('#00b894', '🚀')">
-                            🚀
-                        </div>
-                        <div class="avatar-option" style="background-color: #6c5ce7;" onclick="selectAvatar('#6c5ce7', '🎭')">
-                            🎭
-                        </div>
-                        <div class="avatar-option" style="background-color: #fd79a8;" onclick="selectAvatar('#fd79a8', '🎪')">
-                            🎪
-                        </div>
-                    </div>
-                    
-                    <div class="avatar-actions">
-                        <button class="modal-button primary" onclick="uploadCustomImage()">
-                            📸 Carica foto personalizzata
-                        </button>
-                        <button class="modal-button secondary" onclick="closeAvatarSelector()">
-                            Annulla
-                        </button>
-                        <button class="modal-button danger" onclick="removeAvatar()">
-                            🗑️ Rimuovi avatar
-                        </button>
-                    </div>
-                </div>
-            </div>
             
-            <input type="file" id="avatarFileInput" class="avatar-file-input" accept="image/*" onchange="handleAvatarChange(event)">
         </div>
     `;
 }
@@ -518,207 +446,11 @@ tg.onEvent('backButtonClicked', function() {
     }
 });
 
-// Avatar editing functions
-function openAvatarSelector() {
-    const modal = document.getElementById('avatarModal');
-    modal.classList.add('show');
-    
-    // Haptic feedback if available
-    if (tg.HapticFeedback) {
-        tg.HapticFeedback.impactOccurred('light');
-    }
-}
 
-function closeAvatarSelector() {
-    const modal = document.getElementById('avatarModal');
-    modal.classList.remove('show');
-    
-    if (tg.HapticFeedback) {
-        tg.HapticFeedback.impactOccurred('light');
-    }
-}
 
-function selectAvatar(color, emoji) {
-    const user = tg.initDataUnsafe?.user;
-    const userId = user?.id || 'guest';
-    
-    // Create avatar data
-    const avatarData = {
-        type: 'emoji',
-        color: color,
-        emoji: emoji
-    };
-    
-    // Save to localStorage first (for immediate feedback)
-    localStorage.setItem(`profile_image_${userId}`, JSON.stringify(avatarData));
-    
-    // Save to server for cross-device sync
-    saveProfileImageToServer(avatarData);
-    
-    // Close modal and refresh profile
-    closeAvatarSelector();
-    showPage('profilo');
-    
-    if (tg.HapticFeedback) {
-        tg.HapticFeedback.notificationOccurred('success');
-    }
-}
 
-function uploadCustomImage() {
-    const fileInput = document.getElementById('avatarFileInput');
-    fileInput.click();
-    closeAvatarSelector();
-}
 
-function removeAvatar() {
-    const user = tg.initDataUnsafe?.user;
-    const userId = user?.id || 'guest';
-    
-    // Remove from localStorage
-    localStorage.removeItem(`profile_image_${userId}`);
-    
-    // Remove from server
-    saveProfileImageToServer(null);
-    
-    closeAvatarSelector();
-    showPage('profilo');
-    
-    if (tg.HapticFeedback) {
-        tg.HapticFeedback.impactOccurred('medium');
-    }
-}
 
-function handleAvatarChange(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-        showError('Per favore seleziona un file immagine valido.');
-        return;
-    }
-    
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-        showError('L\'immagine è troppo grande. Massimo 5MB.');
-        return;
-    }
-    
-    showLoading();
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const imageData = e.target.result;
-        
-        // Get user ID for storage
-        const user = tg.initDataUnsafe?.user;
-        const userId = user?.id || 'guest';
-        
-        // Save image to localStorage (as raw data for custom images)
-        try {
-            localStorage.setItem(`profile_image_${userId}`, imageData);
-            
-            // Save to server for cross-device sync
-            saveProfileImageToServer(imageData);
-            
-            // Refresh the profile page to show new avatar
-            showPage('profilo');
-            
-            // Show success message
-            setTimeout(() => {
-                if (tg.HapticFeedback) {
-                    tg.HapticFeedback.notificationOccurred('success');
-                }
-            }, 500);
-            
-        } catch (error) {
-            console.error('Error saving profile image:', error);
-            showError('Errore nel salvare l\'immagine. Riprova con un\'immagine più piccola.');
-        }
-    };
-    
-    reader.onerror = function() {
-        showError('Errore nel leggere il file immagine.');
-    };
-    
-    reader.readAsDataURL(file);
-}
-
-// Profile image synchronization functions
-function saveProfileImageToServer(imageData) {
-    try {
-        console.log('Attempting to save profile image to server:', {
-            hasImageData: !!imageData,
-            imageDataType: typeof imageData,
-            hasSendData: !!tg.sendData,
-            user: tg.initDataUnsafe?.user
-        });
-        
-        if (tg.sendData) {
-            const data = {
-                action: 'update_profile_image',
-                image_data: imageData
-            };
-            console.log('Sending data to Telegram bot:', data);
-            tg.sendData(JSON.stringify(data));
-            console.log('Data sent successfully');
-        } else {
-            console.error('tg.sendData is not available');
-        }
-    } catch (error) {
-        console.error('Error sending profile image to server:', error);
-    }
-}
-
-function loadProfileImageFromServer() {
-    try {
-        const user = tg.initDataUnsafe?.user;
-        const userId = user?.id || 'guest';
-        
-        console.log('Loading profile image for user:', userId);
-        
-        // Check if we already have a local copy first
-        const localImage = localStorage.getItem(`profile_image_${userId}`);
-        if (localImage) {
-            console.log('Using local profile image');
-            return; // Use local version for now
-        }
-        
-        // For now, we'll use a simpler approach - check if bot has profile data
-        // In a real implementation, this would make an HTTP request to the bot's API
-        console.log('No local profile image found');
-        
-    } catch (error) {
-        console.error('Error loading profile image from server:', error);
-    }
-}
-
-// Function to sync profile from server response
-function syncProfileFromServer(profileData) {
-    if (!profileData) return;
-    
-    const user = tg.initDataUnsafe?.user;
-    const userId = user?.id || 'guest';
-    
-    // Save server data to localStorage for offline use
-    if (profileData.profile_image) {
-        localStorage.setItem(`profile_image_${userId}`, profileData.profile_image);
-        
-        // Refresh profile page if we're currently viewing it
-        const activeNav = document.querySelector('.nav-item.active');
-        if (activeNav && activeNav.getAttribute('data-page') === 'profilo') {
-            showPage('profilo');
-        }
-    }
-}
-
-// Close modal when clicking outside
-document.addEventListener('click', function(event) {
-    const modal = document.getElementById('avatarModal');
-    if (modal && event.target === modal) {
-        closeAvatarSelector();
-    }
-});
 
 // Export functions for potential external use
 window.ShoppyXApp = {
@@ -726,15 +458,6 @@ window.ShoppyXApp = {
     showLoading,
     showError,
     initApp,
-    openAvatarSelector,
-    closeAvatarSelector,
-    selectAvatar,
-    uploadCustomImage,
-    removeAvatar,
-    handleAvatarChange,
-    saveProfileImageToServer,
-    loadProfileImageFromServer,
-    syncProfileFromServer,
     saveProfileData,
     loadProfileData,
     saveProfileDataToServer,
