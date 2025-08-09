@@ -121,16 +121,32 @@ function getProfilePage() {
     // Check if user has a saved profile image
     const savedImage = localStorage.getItem(`profile_image_${userId}`);
     
-    const avatarContent = savedImage ? 
-        `<img src="${savedImage}" alt="Profile" />` :
-        `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    let avatarContent;
+    if (savedImage) {
+        try {
+            const avatarData = JSON.parse(savedImage);
+            if (avatarData.type === 'emoji') {
+                // Emoji avatar
+                avatarContent = `<div style="background-color: ${avatarData.color}; width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px;">${avatarData.emoji}</div>`;
+            } else {
+                // Custom image
+                avatarContent = `<img src="${savedImage}" alt="Profile" />`;
+            }
+        } catch (e) {
+            // Fallback for old format or custom image
+            avatarContent = `<img src="${savedImage}" alt="Profile" />`;
+        }
+    } else {
+        // Default avatar
+        avatarContent = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M20 21V19C20 17.9 19.1 16 17 16H7C4.9 16 4 17.9 4 19V21M16 7C16 9.2 14.2 11 12 11S8 9.2 8 7 9.8 3 12 3 16 4.8 16 7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>`;
+    }
     
     return `
         <div class="profile-page">
             <div class="profile-header">
-                <div class="profile-avatar" onclick="openAvatarEditor()">
+                <div class="profile-avatar" onclick="openAvatarSelector()">
                     ${avatarContent}
                     <div class="avatar-edit-button">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -139,7 +155,6 @@ function getProfilePage() {
                         </svg>
                     </div>
                 </div>
-                <input type="file" id="avatarFileInput" class="avatar-file-input" accept="image/*" onchange="handleAvatarChange(event)">
                 <h2 class="profile-name">${userName}</h2>
                 <p class="profile-info">${userInfo}</p>
             </div>
@@ -149,6 +164,60 @@ function getProfilePage() {
                 <h2 style="color: var(--tg-theme-text-color, #000000); margin-bottom: 10px;">Profilo in costruzione</h2>
                 <p style="color: var(--tg-theme-hint-color, #666666);">Stiamo lavorando per offrirti un'area profilo completa e personalizzata!</p>
             </div>
+            
+            <!-- Avatar Selection Modal -->
+            <div id="avatarModal" class="avatar-modal">
+                <div class="avatar-modal-content">
+                    <div class="avatar-modal-header">
+                        <h3 class="avatar-modal-title">Scegli Avatar</h3>
+                        <p class="avatar-modal-subtitle">Seleziona un'immagine per il tuo profilo</p>
+                    </div>
+                    
+                    <div class="avatar-options">
+                        <div class="avatar-option" style="background-color: #ff4757;" onclick="selectAvatar('#ff4757', '👤')">
+                            👤
+                        </div>
+                        <div class="avatar-option" style="background-color: #5352ed;" onclick="selectAvatar('#5352ed', '🛍️')">
+                            🛍️
+                        </div>
+                        <div class="avatar-option" style="background-color: #ff6b35;" onclick="selectAvatar('#ff6b35', '🎯')">
+                            🎯
+                        </div>
+                        <div class="avatar-option" style="background-color: #26de81;" onclick="selectAvatar('#26de81', '⭐')">
+                            ⭐
+                        </div>
+                        <div class="avatar-option" style="background-color: #fed330;" onclick="selectAvatar('#fed330', '🎨')">
+                            🎨
+                        </div>
+                        <div class="avatar-option" style="background-color: #fd79a8;" onclick="selectAvatar('#fd79a8', '💎')">
+                            💎
+                        </div>
+                        <div class="avatar-option" style="background-color: #00b894;" onclick="selectAvatar('#00b894', '🚀')">
+                            🚀
+                        </div>
+                        <div class="avatar-option" style="background-color: #6c5ce7;" onclick="selectAvatar('#6c5ce7', '🎭')">
+                            🎭
+                        </div>
+                        <div class="avatar-option" style="background-color: #fd79a8;" onclick="selectAvatar('#fd79a8', '🎪')">
+                            🎪
+                        </div>
+                    </div>
+                    
+                    <div class="avatar-actions">
+                        <button class="modal-button primary" onclick="uploadCustomImage()">
+                            📸 Carica foto personalizzata
+                        </button>
+                        <button class="modal-button secondary" onclick="closeAvatarSelector()">
+                            Annulla
+                        </button>
+                        <button class="modal-button danger" onclick="removeAvatar()">
+                            🗑️ Rimuovi avatar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <input type="file" id="avatarFileInput" class="avatar-file-input" accept="image/*" onchange="handleAvatarChange(event)">
         </div>
     `;
 }
@@ -184,13 +253,64 @@ tg.onEvent('backButtonClicked', function() {
 });
 
 // Avatar editing functions
-function openAvatarEditor() {
-    const fileInput = document.getElementById('avatarFileInput');
-    fileInput.click();
+function openAvatarSelector() {
+    const modal = document.getElementById('avatarModal');
+    modal.classList.add('show');
     
     // Haptic feedback if available
     if (tg.HapticFeedback) {
         tg.HapticFeedback.impactOccurred('light');
+    }
+}
+
+function closeAvatarSelector() {
+    const modal = document.getElementById('avatarModal');
+    modal.classList.remove('show');
+    
+    if (tg.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('light');
+    }
+}
+
+function selectAvatar(color, emoji) {
+    const user = tg.initDataUnsafe?.user;
+    const userId = user?.id || 'guest';
+    
+    // Create avatar data
+    const avatarData = {
+        type: 'emoji',
+        color: color,
+        emoji: emoji
+    };
+    
+    // Save to localStorage
+    localStorage.setItem(`profile_image_${userId}`, JSON.stringify(avatarData));
+    
+    // Close modal and refresh profile
+    closeAvatarSelector();
+    showPage('profilo');
+    
+    if (tg.HapticFeedback) {
+        tg.HapticFeedback.notificationOccurred('success');
+    }
+}
+
+function uploadCustomImage() {
+    const fileInput = document.getElementById('avatarFileInput');
+    fileInput.click();
+    closeAvatarSelector();
+}
+
+function removeAvatar() {
+    const user = tg.initDataUnsafe?.user;
+    const userId = user?.id || 'guest';
+    
+    localStorage.removeItem(`profile_image_${userId}`);
+    closeAvatarSelector();
+    showPage('profilo');
+    
+    if (tg.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('medium');
     }
 }
 
@@ -220,7 +340,7 @@ function handleAvatarChange(event) {
         const user = tg.initDataUnsafe?.user;
         const userId = user?.id || 'guest';
         
-        // Save image to localStorage
+        // Save image to localStorage (as raw data for custom images)
         try {
             localStorage.setItem(`profile_image_${userId}`, imageData);
             
@@ -247,17 +367,13 @@ function handleAvatarChange(event) {
     reader.readAsDataURL(file);
 }
 
-function removeProfileImage() {
-    const user = tg.initDataUnsafe?.user;
-    const userId = user?.id || 'guest';
-    
-    localStorage.removeItem(`profile_image_${userId}`);
-    showPage('profilo');
-    
-    if (tg.HapticFeedback) {
-        tg.HapticFeedback.impactOccurred('medium');
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('avatarModal');
+    if (modal && event.target === modal) {
+        closeAvatarSelector();
     }
-}
+});
 
 // Export functions for potential external use
 window.ShoppyXApp = {
@@ -265,7 +381,10 @@ window.ShoppyXApp = {
     showLoading,
     showError,
     initApp,
-    openAvatarEditor,
-    handleAvatarChange,
-    removeProfileImage
+    openAvatarSelector,
+    closeAvatarSelector,
+    selectAvatar,
+    uploadCustomImage,
+    removeAvatar,
+    handleAvatarChange
 };
