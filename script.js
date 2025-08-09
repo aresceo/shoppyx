@@ -382,12 +382,23 @@ function handleAvatarChange(event) {
 // Profile image synchronization functions
 function saveProfileImageToServer(imageData) {
     try {
+        console.log('Attempting to save profile image to server:', {
+            hasImageData: !!imageData,
+            imageDataType: typeof imageData,
+            hasSendData: !!tg.sendData,
+            user: tg.initDataUnsafe?.user
+        });
+        
         if (tg.sendData) {
             const data = {
                 action: 'update_profile_image',
                 image_data: imageData
             };
+            console.log('Sending data to Telegram bot:', data);
             tg.sendData(JSON.stringify(data));
+            console.log('Data sent successfully');
+        } else {
+            console.error('tg.sendData is not available');
         }
     } catch (error) {
         console.error('Error sending profile image to server:', error);
@@ -399,19 +410,19 @@ function loadProfileImageFromServer() {
         const user = tg.initDataUnsafe?.user;
         const userId = user?.id || 'guest';
         
-        // Check if we already have a local copy
+        console.log('Loading profile image for user:', userId);
+        
+        // Check if we already have a local copy first
         const localImage = localStorage.getItem(`profile_image_${userId}`);
         if (localImage) {
+            console.log('Using local profile image');
             return; // Use local version for now
         }
         
-        // Request profile image from server via web app data
-        if (tg.sendData) {
-            const data = {
-                action: 'get_profile_image'
-            };
-            tg.sendData(JSON.stringify(data));
-        }
+        // For now, we'll use a simpler approach - check if bot has profile data
+        // In a real implementation, this would make an HTTP request to the bot's API
+        console.log('No local profile image found');
+        
     } catch (error) {
         console.error('Error loading profile image from server:', error);
     }
