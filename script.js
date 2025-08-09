@@ -5,6 +5,7 @@ let tg = window.Telegram.WebApp;
 document.addEventListener('DOMContentLoaded', function() {
     initApp();
     setupNavigation();
+    loadProfileImageFromServer();
     
     // Set default page
     showPage('market');
@@ -283,8 +284,11 @@ function selectAvatar(color, emoji) {
         emoji: emoji
     };
     
-    // Save to localStorage
+    // Save to localStorage first (for immediate feedback)
     localStorage.setItem(`profile_image_${userId}`, JSON.stringify(avatarData));
+    
+    // Save to server for cross-device sync
+    saveProfileImageToServer(avatarData);
     
     // Close modal and refresh profile
     closeAvatarSelector();
@@ -305,7 +309,12 @@ function removeAvatar() {
     const user = tg.initDataUnsafe?.user;
     const userId = user?.id || 'guest';
     
+    // Remove from localStorage
     localStorage.removeItem(`profile_image_${userId}`);
+    
+    // Remove from server
+    saveProfileImageToServer(null);
+    
     closeAvatarSelector();
     showPage('profilo');
     
@@ -344,6 +353,9 @@ function handleAvatarChange(event) {
         try {
             localStorage.setItem(`profile_image_${userId}`, imageData);
             
+            // Save to server for cross-device sync
+            saveProfileImageToServer(imageData);
+            
             // Refresh the profile page to show new avatar
             showPage('profilo');
             
@@ -367,6 +379,63 @@ function handleAvatarChange(event) {
     reader.readAsDataURL(file);
 }
 
+// Profile image synchronization functions
+function saveProfileImageToServer(imageData) {
+    try {
+        if (tg.sendData) {
+            const data = {
+                action: 'update_profile_image',
+                image_data: imageData
+            };
+            tg.sendData(JSON.stringify(data));
+        }
+    } catch (error) {
+        console.error('Error sending profile image to server:', error);
+    }
+}
+
+function loadProfileImageFromServer() {
+    try {
+        const user = tg.initDataUnsafe?.user;
+        const userId = user?.id || 'guest';
+        
+        // Check if we already have a local copy
+        const localImage = localStorage.getItem(`profile_image_${userId}`);
+        if (localImage) {
+            return; // Use local version for now
+        }
+        
+        // Request profile image from server via web app data
+        if (tg.sendData) {
+            const data = {
+                action: 'get_profile_image'
+            };
+            tg.sendData(JSON.stringify(data));
+        }
+    } catch (error) {
+        console.error('Error loading profile image from server:', error);
+    }
+}
+
+// Function to sync profile from server response
+function syncProfileFromServer(profileData) {
+    if (!profileData) return;
+    
+    const user = tg.initDataUnsafe?.user;
+    const userId = user?.id || 'guest';
+    
+    // Save server data to localStorage for offline use
+    if (profileData.profile_image) {
+        localStorage.setItem(`profile_image_${userId}`, profileData.profile_image);
+        
+        // Refresh profile page if we're currently viewing it
+        const activeNav = document.querySelector('.nav-item.active');
+        if (activeNav && activeNav.getAttribute('data-page') === 'profilo') {
+            showPage('profilo');
+        }
+    }
+}
+
 // Close modal when clicking outside
 document.addEventListener('click', function(event) {
     const modal = document.getElementById('avatarModal');
@@ -386,5 +455,8 @@ window.ShoppyXApp = {
     selectAvatar,
     uploadCustomImage,
     removeAvatar,
-    handleAvatarChange
+    handleAvatarChange,
+    saveProfileImageToServer,
+    loadProfileImageFromServer,
+    syncProfileFromServer
 };
