@@ -123,17 +123,10 @@ function getProfilePage() {
     const userInfo = user?.username ? `@${user.username}` : 'Utente ShoppyX';
     const userId = user?.id || 'guest';
     
-    // Try to get Telegram profile photo
-    let avatarContent;
-    if (user && user.photo_url) {
-        // Use Telegram profile photo if available
-        avatarContent = `<img src="${user.photo_url}" alt="Profile" />`;
-    } else {
-        // Default avatar icon
-        avatarContent = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M20 21V19C20 17.9 19.1 16 17 16H7C4.9 16 4 17.9 4 19V21M16 7C16 9.2 14.2 11 12 11S8 9.2 8 7 9.8 3 12 3 16 4.8 16 7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>`;
-    }
+    // Always use default Telegram avatar (non-changeable)
+    const avatarContent = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 21V19C20 17.9 19.1 16 17 16H7C4.9 16 4 17.9 4 19V21M16 7C16 9.2 14.2 11 12 11S8 9.2 8 7 9.8 3 12 3 16 4.8 16 7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
     
     return `
         <div class="profile-page">
