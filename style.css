@@ -149,6 +149,7 @@ body {
 /* Profile Page */
 .profile-page {
     padding-top: 10px;
+    padding-bottom: 100px;
 }
 
 .profile-header {
@@ -216,6 +217,167 @@ body {
 /* Hidden file input */
 .avatar-file-input {
     display: none;
+}
+
+/* Profile Form Styles */
+.profile-form {
+    padding: 20px;
+}
+
+.form-section {
+    margin-bottom: 25px;
+}
+
+.form-label {
+    display: block;
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--tg-theme-text-color, #000000);
+    margin-bottom: 8px;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--tg-theme-text-color, #000000);
+    margin-bottom: 15px;
+    border-bottom: 2px solid var(--tg-theme-button-color, #007acc);
+    padding-bottom: 5px;
+}
+
+.form-input, .form-textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid var(--tg-theme-hint-color, #e0e0e0);
+    border-radius: 12px;
+    font-size: 16px;
+    background: var(--tg-theme-bg-color, #ffffff);
+    color: var(--tg-theme-text-color, #000000);
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+}
+
+.form-input:focus, .form-textarea:focus {
+    outline: none;
+    border-color: var(--tg-theme-button-color, #007acc);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+}
+
+.wallet-input {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+    border: 2px solid var(--tg-theme-hint-color, #e0e0e0);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.3s ease;
+}
+
+.wallet-input:focus-within {
+    border-color: var(--tg-theme-button-color, #007acc);
+}
+
+.crypto-icon {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+    border-right: 1px solid var(--tg-theme-hint-color, #e0e0e0);
+    gap: 8px;
+    min-width: 80px;
+}
+
+.crypto-icon span {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--tg-theme-text-color, #000000);
+}
+
+.wallet-input .form-input {
+    border: none;
+    border-radius: 0;
+    flex: 1;
+}
+
+.save-profile-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--tg-theme-button-color, #007acc);
+    color: var(--tg-theme-button-text-color, #ffffff);
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 20px;
+}
+
+.save-profile-btn:hover {
+    background: var(--tg-theme-button-color, #0066cc);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 122, 204, 0.3);
+}
+
+.save-profile-btn:active {
+    transform: translateY(0);
+}
+
+/* Venditore Page Styles */
+.venditore-page {
+    padding: 20px;
+    text-align: center;
+}
+
+.venditore-header {
+    margin-bottom: 40px;
+}
+
+.venditore-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+.venditore-title {
+    font-size: 28px;
+    font-weight: bold;
+    color: var(--tg-theme-text-color, #000000);
+    margin-bottom: 8px;
+}
+
+.venditore-subtitle {
+    font-size: 16px;
+    color: var(--tg-theme-hint-color, #666666);
+}
+
+.coming-soon {
+    background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+    border-radius: 16px;
+    padding: 40px 20px;
+    margin-top: 40px;
+}
+
+.coming-soon-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+.coming-soon h3 {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--tg-theme-text-color, #000000);
+    margin-bottom: 12px;
+}
+
+.coming-soon p {
+    font-size: 16px;
+    color: var(--tg-theme-hint-color, #666666);
+    line-height: 1.5;
 }
 
 /* Avatar selection modal */
